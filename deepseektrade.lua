@@ -1,6 +1,6 @@
 -- ==============================================
--- МИНИМАЛЬНЫЙ FAKE TRADE + SPAWNER (ИСПРАВЛЕННЫЙ)
--- Без лишних функций, только трейд и спавн
+-- МИНИМАЛЬНЫЙ FAKE TRADE + SPAWNER (С ДИАЛОГОМ)
+-- Исправлены ошибки, добавлен запрос трейда
 -- ==============================================
 
 local Players = game:GetService('Players')
@@ -10,7 +10,6 @@ local UserInputService = game:GetService('UserInputService')
 local TweenService = game:GetService('TweenService')
 local HttpService = game:GetService('HttpService')
 
--- Безопасный вызов setthreadidentity
 pcall(function() setthreadidentity(2) end)
 
 -- ==============================================
@@ -96,7 +95,7 @@ end
 -- 3. КОНФИГ И СОСТОЯНИЯ
 -- ==============================================
 local CONFIG = {
-    PARTNER_NAME = 'SurenArmen',
+    PARTNER_NAME = 'piluna67',
     PARTNER_USER_ID = 987654321,
     AUTO_ACCEPT_DELAY = 0.5,
     AUTO_CONFIRM_DELAY = 0.3,
@@ -773,7 +772,7 @@ local title = Instance.new('TextLabel', mainFrame)
 title.Size = UDim2.new(1, 0, 0, 20)
 title.Position = UDim2.new(0, 0, 0, 2)
 title.BackgroundTransparency = 1
-title.Text = '✦ Fake Trade v4'
+title.Text = 'блядские фейк трейды'
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.TextColor3 = Color3.fromRGB(220, 220, 255)
@@ -850,22 +849,40 @@ local function makeButton(text, color, callback)
     return btn
 end
 
+-- Функция показа диалога запроса трейда
+local function showTradeRequestDialog()
+    if mockState.active then
+        return
+    end
+    local success, response = pcall(function()
+        return DialogApp:dialog({
+            text = CONFIG.PARTNER_NAME .. ' sent you a trade request',
+            left = 'Decline',
+            right = 'Accept',
+        })
+    end)
+    if success and response == 'Accept' then
+        -- Создаём фейк-трейд
+        mockState.active = false
+        mockState.trade = nil
+        mockState.trade = createMockTrade()
+        mockState.active = true
+        UIManager.set_app_visibility('TradeApp', false)
+        task.wait(0.2)
+        TradeApp:_overwrite_local_trade_state(mockState.trade)
+        task.wait(0.3)
+        UIManager.set_app_visibility('TradeApp', true)
+        FriendHighlight(true)
+        TradeApp:_show_intro_message()
+        if TradeApp.refresh_all then
+            TradeApp:refresh_all()
+            FriendHighlight(true)
+        end
+    end
+end
+
 -- Кнопки управления трейдом
-makeButton('Start Trade', Color3.fromRGB(40, 140, 80), function()
-    if mockState.active then return end
-    mockState.active = false
-    mockState.trade = nil
-    mockState.trade = createMockTrade()
-    mockState.active = true
-    UIManager.set_app_visibility('TradeApp', false)
-    task.wait(0.2)
-    TradeApp:_overwrite_local_trade_state(mockState.trade)
-    task.wait(0.3)
-    UIManager.set_app_visibility('TradeApp', true)
-    FriendHighlight(true)
-    TradeApp:_show_intro_message()
-    if TradeApp.refresh_all then TradeApp:refresh_all(); FriendHighlight(true) end
-end)
+makeButton('Start Trade', Color3.fromRGB(40, 140, 80), showTradeRequestDialog)
 
 makeButton('Add Random Item', Color3.fromRGB(120, 50, 180), function()
     if mockState.active and mockState.trade then
@@ -964,9 +981,12 @@ makeButton('Spawn Fake Player', Color3.fromRGB(80, 60, 180), function()
         petFlags = { M = currentFakeType == 'mega', N = currentFakeType == 'neon', F = true, R = true }
         petData = { kind = getKindPet(high) }
     end
-    local success, id = pcall(function() return Players:GetUserIdFromNameAsync(partnerBox[1]) end)
-    local name = partnerBox[1]
-    if not success then name = CONFIG.PARTNER_NAME end
+    local name = partnerBox.Text
+    local success, id = pcall(function() return Players:GetUserIdFromNameAsync(name) end)
+    if not success then
+        name = CONFIG.PARTNER_NAME
+        id = CONFIG.PARTNER_USER_ID
+    end
     CreateFakePlayerCharacterFromPARTNER_NAME(name, id or CONFIG.PARTNER_USER_ID, petData, petFlags)
 end)
 
@@ -1161,4 +1181,4 @@ partnerBox.FocusLost:Connect(function()
     end
 end)
 
-print('✅ Минимальный скрипт Fake Trade + Spawner загружен.')
+print('✅ Минимальный скрипт Fake Trade + Spawner загружен (с диалогом).')
